@@ -3,11 +3,9 @@
 import sys
 import os.path
 import logging
-import sqlite3
-import csv
-import geojson
 import pprint
 
+import mapzen.whosonfirst.geoplanet
 import mapzen.whosonfirst.utils
 import mapzen.whosonfirst.export
 
@@ -20,6 +18,7 @@ if __name__ == '__main__':
     opt_parser = optparse.OptionParser()
 
     opt_parser.add_option('-s', '--source', dest='source', action='store', default='None', help='')
+    opt_parser.add_option('-i', '--id', dest='id', action='store', default='None', help='')
     opt_parser.add_option('-d', '--db', dest='db', action='store', default='None', help='')
 
     opt_parser.add_option('-v', '--verbose', dest='verbose', action='store_true', default=False, help='Be chatty (default is false)')
@@ -31,77 +30,25 @@ if __name__ == '__main__':
     else:
         logging.basicConfig(level=logging.INFO)
 
-    source = os.path.abspath(options.source)
     db = os.path.abspath(options.db)
+    gp = mapzen.whosonfirst.geoplanet.names(db)
 
+    source = os.path.abspath(options.source)
     exporter = mapzen.whosonfirst.export.flatfile(source)
 
-    db = sqlite3.connect(db)
-    curs = db.cursor()
+    if options.id:
 
-    crawl = mapzen.whosonfirst.utils.crawl(source, inflate=True)
-
-    for feature in crawl:
-
-        props = feature['properties']
-        wofid = props['wof:id']
-
-        concordances = props.get('wof:concordances', {})
-        gpid = concordances.get('gp:id', None)
-
-        if gpid == None:
-            continue
-
-        sql = "SELECT * FROM names WHERE id=?"
-        params = (gpid,)
-
-        curs.execute(sql, params)
-        rows = curs.fetchall()
-
-        if len(rows) == 0:
-            continue
-
-        langs = []
-
-        """
-        for k, v in props.items():
-
-            if k.startswith("name:"):
-                del(props[k])
-        """
-
-        if len(rows) == 0:
-            continue
-
-        for r in rows:
-
-            ignore, name, lang, type = r
-
-            lang = lang.lower()
-
-            if not type:
-                type = "p"
-            else:
-                type = type.lower()
-                
-            if lang != "eng" and type == "q":
-                type = "p"
-
-            if type == "p" and not lang in langs:
-                langs.append(lang)
-
-            k = "name:%s_%s" % (lang, type)
-            # print "%s = %s" % (k, name)
-            # names +=  1
-
-            n = props.get(k, [])
-
-            if not name in n:
-                n.append(name)
-
-            props[k] = n
-
-        # props['wof:languages'] = langs
-        
-        feature['properties'] = props
+        feature = mapzen.whosonfirst.utils.load(source, options.id)
+        gp.append_names(feature)
         exporter.export_feature(feature)
+
+    else:
+
+        crawl = mapzen.whosonfirst.utils.crawl(source, inflate=True)
+
+        for feature in crawl:
+            
+            gp.append_names(feature)
+            exporter.export_feature(feature)
+            
+    sys.exit()
