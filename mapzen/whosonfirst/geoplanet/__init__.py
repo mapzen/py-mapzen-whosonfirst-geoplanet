@@ -2,6 +2,7 @@
 __import__('pkg_resources').declare_namespace(__name__)
 
 import sqlite3
+import mapzen.whosonfirst.names
 
 class names:
 
@@ -13,6 +14,9 @@ class names:
         self.db_path = db_path
         self.db_conn = db_conn
         self.db_curs = db_curs
+
+        lbl = mapzen.whosonfirst.names.labels()
+        self.labels = lbl
 
     # please to be writing function to index/import names
 
@@ -58,7 +62,10 @@ class names:
             if type == "p" and not lang in langs:
                 langs.append(lang)
 
-            k = "name:%s_%s" % (lang, type)
+            k = "%s_%s" % (lang, type)
+            k = self.labels.convert(k, 'geoplanet', 'wof')
+
+            k = "name:%k" % k
             # print "%s = %s" % (k, name)
             # names +=  1
 
