@@ -65,7 +65,7 @@ class names:
             k = "%s_%s" % (lang, type)
             k = self.labels.convert(k, 'geoplanet', 'wof')
 
-            k = "name:%k" % k
+            k = "name:%s" % k
             # print "%s = %s" % (k, name)
             # names +=  1
 
